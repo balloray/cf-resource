@@ -1,10 +1,10 @@
-FROM alpine:3.11
+FROM eclipse-temurin:11.0.13_8-jdk-focal
 
 ADD resource/ /opt/resource/
 ADD itest/ /opt/itest/
 
 # Install uuidgen
-RUN apk add --no-cache ca-certificates curl bash jq util-linux
+# RUN apk add --no-cache ca-certificates curl bash jq util-linux
 
 # Install Cloud Foundry cli v6
 ADD https://packages.cloudfoundry.org/stable?release=linux64-binary&version=6.53.0 /tmp/cf-cli.tgz
