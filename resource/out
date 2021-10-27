@@ -1,0 +1,173 @@
+#!/bin/bash
+# vim: set ft=sh
+
+set -eu
+set -o pipefail
+
+exec 3>&1 # make stdout available as fd 3 for the result
+exec 1>&2 # redirect all output to stderr for logging
+
+base_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+
+source "$base_dir/resource/lib/logger.sh"
+source "$base_dir/resource/lib/error-codes.sh"
+
+working_dir=${1:-}
+
+if [ -z "$working_dir" ]; then
+  logger::error "usage: $0 <path/to/source>"
+  exit 1
+fi
+
+cd "$working_dir"
+
+TMPDIR=${TMPDIR:-/tmp}
+PAYLOAD=$(mktemp "$TMPDIR/cf-cli-resource-request.XXXXXX")
+
+cat > $PAYLOAD <&0
+
+get_config() {
+  local key=${1:?config key null or not set}
+  local default=${2:-}
+  jq -r --arg default "$default" "$key // \$default" < "$PAYLOAD"
+}
+
+debug=$(get_config '.source.debug')
+if [ "$debug" = "true" ]; then
+  set -x
+fi
+
+export CCR_CF_CLI_VERSION=$(get_config '.source.cf_cli_version' "${CCR_CF_CLI_VERSION:-6}")
+source "$base_dir/resource/lib/cf-functions.sh"
+
+params=$(get_config '.params')
+if [ -z "$params" ]; then
+  logger::error 'invalid payload (missing params)'
+  exit $E_PARAMS_NOT_SET
+fi
+
+api=$(get_config '.source.api')
+skip_cert_check=$(get_config '.source.skip_cert_check' 'false')
+username=$(get_config '.source.username')
+password=$(get_config '.source.password')
+origin=$(get_config '.source.origin')
+client_id=$(get_config '.source.client_id')
+client_secret=$(get_config '.source.client_secret')
+source_org=$(get_config '.source.org')
+source_space=$(get_config '.source.space')
+command_file=$(get_config '.params.command_file')
+
+cf_color=$(get_config '.source.cf_color') && [ -n "$cf_color" ] && export CF_COLOR=$cf_color
+cf_dial_timeout=$(get_config '.source.cf_dial_timeout') && [ -n "$cf_dial_timeout" ] && export CF_DIAL_TIMEOUT=$cf_dial_timeout
+cf_trace=$(get_config '.source.cf_trace') && echo "$cf_trace" | grep -qi 'true' && export CF_TRACE=true
+
+cf_home=$(get_config '.params.cf_home')
+if [ -n "$cf_home" ]; then
+  export CF_HOME=$cf_home
+
+  if ! cf::is_logged_in; then
+    logger::error "not logged in to cf (check $CF_HOME/config.json)"
+    exit $E_NOT_LOGGED_IN
+  fi
+
+  if [ -z "$source_org" ]; then
+    source_org=$(cat $CF_HOME/.cf/config.json | jq -r .OrganizationFields.Name)
+  fi
+
+  if [ -z "$source_space" ]; then
+    source_space=$(cat $CF_HOME/.cf/config.json | jq -r .SpaceFields.Name)
+  fi
+else
+  export CF_HOME=$(mktemp -d "$TMPDIR/cf_home.XXXXXX")
+
+  if [ -z "$api" ]; then
+    logger::error 'invalid payload (missing api)'
+    exit $E_API_NOT_SET
+  fi
+
+  if [ -z "$username" ] && [ -z "$client_id" ]; then
+    logger::error 'invalid payload (must specify username or client_id)'
+    exit $E_NEITHER_USERNAME_OR_CLIENT_ID_SET
+  fi
+
+  if [ -n "$username" ] && [ -n "$client_id" ]; then
+    logger::error 'invalid payload (must specify only username or client_id)'
+    exit $E_BOTH_USERNAME_AND_CLIENT_ID_SET
+  fi
+
+  if [ -n "$username" ] && [ -z "$password" ]; then
+    logger::error 'invalid payload (missing password)'
+    exit $E_PASSWORD_NOT_SET
+  fi
+
+  if [ -n "$client_id" ] && [ -z "$client_secret" ]; then
+    logger::error 'invalid payload (missing client_secret)'
+    exit $E_CLIENT_SECRET_NOT_SET
+  fi
+
+  # Login with credentials
+  cf::api "$api" "$skip_cert_check"
+  if [ -n "$client_id" ]; then
+    cf::auth_client "$client_id" "$client_secret"
+  else
+    cf::auth_user "$username" "$password" "$origin"
+  fi
+fi
+
+if [ -n "$command_file" ]; then
+  if [ -r "$command_file" ]; then
+    logger::info "Populating params from file (overwriting params in pipeline definition): $command_file"
+    params=$(yq read --tojson "$command_file")
+  else
+    logger::error "invalid payload (can not find command_file: $command_file)"
+    exit $E_COMMAND_FILE_NOT_FOUND
+  fi
+fi
+
+# convert the single command into a single element array
+if echo $params | jq -e 'has("command")' >/dev/null; then
+  params=$(jq -n --argjson params "$params" '{commands: [ $params ] }')
+fi
+
+if ! echo $params | jq -e 'has("commands")' >/dev/null; then
+  logger::error 'invalid payload (missing command)'
+  exit $E_COMMAND_NOT_SET
+fi
+
+logger::info "$(cf::cf version)"
+
+get_option() {
+  local key=${1:?config key null or not set}
+  local default=${2:-}
+  echo "$OPTIONS" | jq -r --arg default "$default" "$key // \$default"
+}
+
+echo "$params" | jq -c '.commands[]' | while read -r OPTIONS; do
+  (
+    command=$(get_option '.command')
+
+    # Override source values if set in params
+    cf_color=$(get_option '.cf_color') && [ -n "$cf_color" ] && export CF_COLOR=$cf_color
+    cf_dial_timeout=$(get_option '.cf_dial_timeout') && [ -n "$cf_dial_timeout" ] && export CF_DIAL_TIMEOUT=$cf_dial_timeout
+    cf_trace=$(get_option '.cf_trace') && [ -n "$cf_trace" ] && export CF_TRACE=$cf_trace
+
+    org=$(get_option '.org' "$source_org")
+    space=$(get_option '.space' "$source_space")
+
+    command_script=$base_dir/resource/commands/$command.sh
+    if [ -f "$command_script" ]; then
+      source "$command_script"
+    else
+      logger::error "invalid payload (unknown command: $command)"
+      exit $E_UNKNOWN_COMMAND
+    fi
+  )
+done
+
+jq -n \
+--arg timestamp $(date +%s) \
+'{
+  version: {
+    timestamp: $timestamp
+  }
+}' >&3
