@@ -1,4 +1,4 @@
-FROM eclipse-temurin:11.0.13_8-jdk-focal
+FROM maven:3.8.3-eclipse-temurin-11
 
 ADD resource/ /opt/resource/
 ADD itest/ /opt/itest/
