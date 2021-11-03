@@ -6,15 +6,18 @@ ENV YAML_VERSION=3.4.1
 ADD resource/ /opt/resource/
 ADD itest/ /opt/itest/
 
+# RUN yum install wget vim telnet git -y && yum clean all
+RUN apt-get update && apt-get install zip wget vim telnet git curl bash jq util-linux -y
+
 # Install uuidgen
 # RUN apk add --no-cache ca-certificates curl bash jq util-linux
 
-# Install Cloud Foundry cli v6
-ADD https://packages.cloudfoundry.org/stable?release=linux64-binary&version=6.53.0 /tmp/cf-cli.tgz
-RUN mkdir -p /usr/local/bin && \
-  tar -xf /tmp/cf-cli.tgz -C /usr/local/bin && \
-  cf --version && \
-  rm -f /tmp/cf-cli.tgz
+# # Install Cloud Foundry cli v6
+# ADD https://packages.cloudfoundry.org/stable?release=linux64-binary&version=6.53.0 /tmp/cf-cli.tgz
+# RUN mkdir -p /usr/local/bin && \
+#   tar -xf /tmp/cf-cli.tgz -C /usr/local/bin && \
+#   cf --version && \
+#   rm -f /tmp/cf-cli.tgz
 
 # Install Cloud Foundry cli v7
 ADD https://packages.cloudfoundry.org/stable?release=linux64-binary&version=${CF_VERSION} /tmp/cf7-cli.tgz
@@ -30,3 +33,11 @@ ADD https://github.com/mikefarah/yq/releases/download/${YAML_VERSION}/yq_linux_a
 RUN install /tmp/yq_linux_amd64 /usr/local/bin/yq && \
   yq --version && \
   rm -f /tmp/yq_linux_amd64
+
+# # install gcloud package
+# ADD https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz  /tmp/google-cloud-sdk.tar.gz
+# RUN mkdir -p /usr/local/gcloud \
+#   && tar -C /usr/local/gcloud -xvf /tmp/google-cloud-sdk.tar.gz \
+#   && /usr/local/gcloud/google-cloud-sdk/install.sh \
+#   && rm /tmp/google-cloud-sdk.tar.gz
+# ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin
