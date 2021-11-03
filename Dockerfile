@@ -1,5 +1,8 @@
 FROM maven:3.8.3-eclipse-temurin-11
 
+ENV CF_VERSION=7.2.0
+ENV YAML_VERSION=3.4.1
+
 ADD resource/ /opt/resource/
 ADD itest/ /opt/itest/
 
@@ -14,7 +17,7 @@ RUN mkdir -p /usr/local/bin && \
   rm -f /tmp/cf-cli.tgz
 
 # Install Cloud Foundry cli v7
-ADD https://packages.cloudfoundry.org/stable?release=linux64-binary&version=7.2.0 /tmp/cf7-cli.tgz
+ADD https://packages.cloudfoundry.org/stable?release=linux64-binary&version=${CF_VERSION} /tmp/cf7-cli.tgz
 RUN mkdir -p /usr/local/bin /tmp/cf7-cli && \
   tar -xf /tmp/cf7-cli.tgz -C /tmp/cf7-cli && \
   install /tmp/cf7-cli/cf7 /usr/local/bin/cf7 && \
@@ -23,7 +26,7 @@ RUN mkdir -p /usr/local/bin /tmp/cf7-cli && \
   rm -rf /tmp/cf7-cli
 
 # Install yaml cli
-ADD https://github.com/mikefarah/yq/releases/download/3.4.1/yq_linux_amd64 /tmp/yq_linux_amd64
+ADD https://github.com/mikefarah/yq/releases/download/${YAML_VERSION}/yq_linux_amd64 /tmp/yq_linux_amd64
 RUN install /tmp/yq_linux_amd64 /usr/local/bin/yq && \
   yq --version && \
   rm -f /tmp/yq_linux_amd64
