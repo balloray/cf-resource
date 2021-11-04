@@ -3,12 +3,11 @@ FROM maven:3.8.3-eclipse-temurin-11
 ENV CF_VERSION=7.2.0
 ENV YAML_VERSION=3.4.1
 
-ADD resource/ /opt/resource/
-ADD itest/ /opt/itest/
+# ADD resource/ /opt/resource/
+# ADD itest/ /opt/itest/
 
-# RUN yum install wget vim telnet git -y && yum clean all
-RUN apt-get update && apt-get install python3-pip zip wget vim telnet git curl bash jq util-linux -y
-
+# install useful tools
+RUN apt-get update && apt-get install -y python3-pip zip wget vim telnet git curl bash jq util-linux && apt-get clean all
 
 # Install uuidgen
 # RUN apk add --no-cache ca-certificates curl bash jq util-linux
