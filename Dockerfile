@@ -7,7 +7,8 @@ ADD resource/ /opt/resource/
 ADD itest/ /opt/itest/
 
 # RUN yum install wget vim telnet git -y && yum clean all
-RUN apt-get update && apt-get install zip wget vim telnet git curl bash jq util-linux -y
+RUN apt-get update && apt-get install python3-pip zip wget vim telnet git curl bash jq util-linux -y
+
 
 # Install uuidgen
 # RUN apk add --no-cache ca-certificates curl bash jq util-linux
@@ -35,9 +36,9 @@ RUN install /tmp/yq_linux_amd64 /usr/local/bin/yq && \
   rm -f /tmp/yq_linux_amd64
 
 # # install gcloud package
-# ADD https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz  /tmp/google-cloud-sdk.tar.gz
-# RUN mkdir -p /usr/local/gcloud \
-#   && tar -C /usr/local/gcloud -xvf /tmp/google-cloud-sdk.tar.gz \
-#   && /usr/local/gcloud/google-cloud-sdk/install.sh \
-#   && rm /tmp/google-cloud-sdk.tar.gz
-# ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin
+ADD https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz  /tmp/google-cloud-sdk.tar.gz
+RUN mkdir -p /usr/local/gcloud \
+  && tar -C /usr/local/gcloud -xvf /tmp/google-cloud-sdk.tar.gz \
+  && /usr/local/gcloud/google-cloud-sdk/install.sh \
+  && rm /tmp/google-cloud-sdk.tar.gz
+ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin
