@@ -1,6 +1,7 @@
 FROM maven:3.8.3-eclipse-temurin-11
 
-ENV CF_VERSION=7.2.0
+ENV CF_VERSION=6.53.0
+ENV CF7_VERSION=7.2.0
 ENV YAML_VERSION=3.4.1
 
 # ADD resource/ /opt/resource/
@@ -13,14 +14,14 @@ RUN apt-get update && apt-get install -y python3-pip zip wget vim telnet git cur
 # RUN apk add --no-cache ca-certificates curl bash jq util-linux
 
 # # Install Cloud Foundry cli v6
-# ADD https://packages.cloudfoundry.org/stable?release=linux64-binary&version=6.53.0 /tmp/cf-cli.tgz
-# RUN mkdir -p /usr/local/bin && \
-#   tar -xf /tmp/cf-cli.tgz -C /usr/local/bin && \
-#   cf --version && \
-#   rm -f /tmp/cf-cli.tgz
+ADD https://packages.cloudfoundry.org/stable?release=linux64-binary&version=${CF_VERSION} /tmp/cf-cli.tgz
+RUN mkdir -p /usr/local/bin && \
+  tar -xf /tmp/cf-cli.tgz -C /usr/local/bin && \
+  cf --version && \
+  rm -f /tmp/cf-cli.tgz
 
 # Install Cloud Foundry cli v7
-ADD https://packages.cloudfoundry.org/stable?release=linux64-binary&version=${CF_VERSION} /tmp/cf7-cli.tgz
+ADD https://packages.cloudfoundry.org/stable?release=linux64-binary&version=${CF7_VERSION} /tmp/cf7-cli.tgz
 RUN mkdir -p /usr/local/bin /tmp/cf7-cli && \
   tar -xf /tmp/cf7-cli.tgz -C /tmp/cf7-cli && \
   install /tmp/cf7-cli/cf7 /usr/local/bin/cf7 && \
