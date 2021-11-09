@@ -3,11 +3,12 @@ FROM maven:3.8.3-eclipse-temurin-11
 ENV CF_VERSION=6.53.0
 ENV CF7_VERSION=7.2.0
 ENV YAML_VERSION=3.4.1
+ENV DOCKER_VERSION=18.03.1-ce
 
 # ADD resource/ /opt/resource/
 # ADD itest/ /opt/itest/
 
-# install useful tools
+# Install useful tools
 RUN apt-get update && apt-get install -y python3-pip zip wget vim telnet git curl bash jq util-linux && apt-get clean all
 
 # Install uuidgen
@@ -42,3 +43,8 @@ RUN mkdir -p /usr/local/gcloud \
   && /usr/local/gcloud/google-cloud-sdk/install.sh \
   && rm /tmp/google-cloud-sdk.tar.gz
 ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin
+
+## Download docker cli
+RUN curl -fsSLO "https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz" \
+  && tar xzvf "docker-${DOCKER_VERSION}.tgz" --strip 1 -C /usr/local/bin docker/docker \
+  && rm "docker-${DOCKER_VERSION}.tgz"
