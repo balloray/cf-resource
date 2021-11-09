@@ -48,3 +48,8 @@ ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin
 RUN curl -fsSLO "https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz" \
   && tar xzvf "docker-${DOCKER_VERSION}.tgz" --strip 1 -C /usr/local/bin docker/docker \
   && rm "docker-${DOCKER_VERSION}.tgz"
+
+# Add a new user "pcf" with user id 8877
+RUN useradd -u 8877 pcf
+# Change to non-root privilege
+USER pcf
